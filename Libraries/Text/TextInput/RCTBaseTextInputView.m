@@ -98,11 +98,26 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
   return self.backedTextInputView.attributedText;
 }
 
+- (BOOL)textOf:(NSAttributedString*)newText equals:(NSAttributedString*)oldText{
+    UITextInputMode *currentInputMode =  self.backedTextInputView.textInputMode;
+    if ([currentInputMode.primaryLanguage isEqualToString:@"dictation"]) {
+        // When the dictation is running we can't update the attibuted text on the backed up text view
+        // because setting the attributed string will kill the dictation. This means that we can't impose
+        // the settings on a dictation.
+        return ([newText.string isEqualToString:oldText.string]);
+    } else {
+        return ([newText isEqualToAttributedString:oldText]);
+    }
+}
+
 - (void)setAttributedText:(NSAttributedString *)attributedText
 {
   NSInteger eventLag = _nativeEventCount - _mostRecentEventCount;
-
-  if (eventLag == 0 && ![attributedText isEqualToAttributedString:self.backedTextInputView.attributedText]) {
+    BOOL textNeedsUpdate = NO;
+    NSMutableAttributedString *const backedTextInputViewTextCopy = [self.backedTextInputView.attributedText mutableCopy];
+    NSMutableAttributedString *const attributedTextCopy = [attributedText mutableCopy];
+    textNeedsUpdate = ([self textOf:attributedTextCopy equals:backedTextInputViewTextCopy] == NO);
+    if (eventLag == 0 && textNeedsUpdate) {
     UITextRange *selection = self.backedTextInputView.selectedTextRange;
     NSInteger oldTextLength = self.backedTextInputView.attributedText.string.length;
 
